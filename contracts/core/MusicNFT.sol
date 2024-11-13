@@ -3,50 +3,88 @@
 pragma solidity ^0.8.17;  
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";  
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";  
+import "@openzeppelin/contracts/access/Ownable.sol";  
 import "@openzeppelin/contracts/token/common/ERC2981.sol";  
-import "@openzeppelin/contracts/utils/Counters.sol";  
+import "@openzeppelin/contracts/utils/Strings.sol";  
 
-contract MusicNFT is ERC721, ERC2981 {  
-    using Counters for Counters.Counter;  
-    Counters.Counter private _tokenIds;  
-
-    event MusicMinted(address indexed artist, uint256 indexed tokenId, string uri);  
-
-    mapping(uint256 => string) private _tokenURIs;  
-
-    constructor() ERC721("MusicNFT", "MNFT") {  
-        _setDefaultRoyalty(msg.sender, 1000); // 10% royalty  
+contract MusicNFT is ERC721, ERC721URIStorage, ERC2981, Ownable {  
+    using Strings for uint256;  
+    
+    uint256 private _tokenIds;  
+    
+    // イベントの定義  
+    event MusicMinted(uint256 indexed tokenId, address indexed creator, string uri);  
+    
+    struct MusicRoyaltyInfo {  
+        address recipient;  
+        uint256 percentage;  
     }  
+    
+    mapping(uint256 => MusicRoyaltyInfo) private _musicRoyalties;  
 
-    function mintMusic(string memory uri) public returns (uint256) {  
-        require(bytes(uri).length > 0, "URI cannot be empty");  
+    constructor() ERC721("MusicNFT", "MNFT") {}  
+
+    function mintMusic(string memory _uri) public returns (uint256) {  
+        // URIの空チェック  
+        require(bytes(_uri).length > 0, "URI cannot be empty");  
         
-        _tokenIds.increment();  
-        uint256 newTokenId = _tokenIds.current();  
+        _tokenIds++;  
+        uint256 newItemId = _tokenIds;  
+        _safeMint(msg.sender, newItemId);  
+        _setTokenURI(newItemId, _uri);  
+        
+        // デフォルトのロイヤリティを設定  
+        _setTokenRoyalty(newItemId, msg.sender, 1000);  
 
-        _safeMint(msg.sender, newTokenId);  
-        _tokenURIs[newTokenId] = uri;  
-        _setTokenRoyalty(newTokenId, msg.sender, 1000);  
+        // イベントの発行  
+        emit MusicMinted(newItemId, msg.sender, _uri);  
 
-        emit MusicMinted(msg.sender, newTokenId, uri);  
-        return newTokenId;  
+        return newItemId;  
     }  
 
-
-
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {  
+    function setMusicRoyalty(  
+        uint256 tokenId,  
+        address recipient,  
+        uint256 percentage  
+    ) public {  
         require(_exists(tokenId), "Token does not exist");  
-        return _tokenURIs[tokenId];  
+        require(ownerOf(tokenId) == msg.sender, "Only owner can set royalty");  
+        require(percentage <= 10000, "Percentage cannot exceed 100%");  
+
+        _musicRoyalties[tokenId] = MusicRoyaltyInfo(recipient, percentage);  
     }  
 
-    function totalSupply() public view returns (uint256) {  
-        return _tokenIds.current();  
+    function getMusicRoyaltyInfo(uint256 tokenId) public view returns (address, uint256) {  
+        require(_exists(tokenId), "Token does not exist");  
+        MusicRoyaltyInfo memory royalty = _musicRoyalties[tokenId];  
+        return (royalty.recipient, royalty.percentage);  
+    }  
+
+    function tokenURI(uint256 tokenId)  
+        public  
+        view  
+        virtual  
+        override(ERC721, ERC721URIStorage)  
+        returns (string memory)  
+    {  
+        require(_exists(tokenId), "Token does not exist");  
+        return super.tokenURI(tokenId);  
+    }  
+
+    function _burn(uint256 tokenId)   
+        internal   
+        virtual   
+        override(ERC721, ERC721URIStorage)   
+    {  
+        super._burn(tokenId);  
     }  
 
     function supportsInterface(bytes4 interfaceId)  
         public  
         view  
-        override(ERC721, ERC2981)  
+        virtual  
+        override(ERC721, ERC721URIStorage, ERC2981)  
         returns (bool)  
     {  
         return super.supportsInterface(interfaceId);  

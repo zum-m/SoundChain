@@ -83,4 +83,20 @@ describe("MusicStreaming", function () {
              .withArgs(1n, await user.getAddress(), ethers.parseEther("0.001"));  
         });  
     });  
+
+    describe("Social Features", function () {
+        it("Should create and manage playlists", async function () {
+            const [user] = await ethers.getSigners();
+            await musicStreaming.connect(user).createPlaylist("My Playlist", true);
+            const playlist = await musicStreaming.playlists(1);
+            expect(playlist.name).to.equal("My Playlist");
+            expect(playlist.creator).to.equal(user.address);
+        });
+
+        it("Should handle likes correctly", async function () {
+            const [user] = await ethers.getSigners();
+            await musicStreaming.connect(user).likeMusic(1);
+            expect(await musicStreaming.likesCount(1)).to.equal(1);
+        });
+    });
 });

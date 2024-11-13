@@ -37,6 +37,44 @@ contract MusicStreaming is ReentrancyGuard {
         _;  
     }  
     
+    // プレイリスト機能の追加
+    struct Playlist {
+        string name;
+        uint256[] musicIds;
+        address creator;
+        bool isPublic;
+    }
+
+    mapping(uint256 => Playlist) public playlists;
+    uint256 public playlistCount;
+
+    // いいね機能の追加
+    mapping(uint256 => mapping(address => bool)) public likes;
+    mapping(uint256 => uint256) public likesCount;
+
+    // コメント機能の追加
+    struct Comment {
+        address user;
+        string content;
+        uint256 timestamp;
+    }
+    mapping(uint256 => Comment[]) public comments;
+
+    // ユーザープロファイル機能の追加
+    struct UserProfile {
+        string name;
+        string avatarURI;
+        uint256[] playlists;
+        uint256[] followers;
+        uint256[] following;
+    }
+    
+    mapping(address => UserProfile) public userProfiles;
+    mapping(uint256 => mapping(address => bool)) public playlistFollowers;
+    
+    event ProfileUpdated(address indexed user, string name, string avatarURI);
+    event PlaylistFollowed(uint256 indexed playlistId, address indexed follower);
+
     function startStream(uint256 tokenId) external payable onlyLicenseHolder(tokenId) nonReentrant {  
         require(msg.value >= MINIMUM_STREAM_PAYMENT, "Insufficient payment");  
         require(!activeStreams[msg.sender][tokenId], "Already streaming");  
@@ -85,4 +123,44 @@ contract MusicStreaming is ReentrancyGuard {
     function getStreamHistory(uint256 tokenId) external view returns (Stream[] memory) {  
         return streams[tokenId];  
     }  
+
+    // 新規機能の追加
+    function createPlaylist(string memory _name, bool _isPublic) external {
+        playlistCount++;
+        playlists[playlistCount] = Playlist(_name, new uint256[](0), msg.sender, _isPublic);
+    }
+
+    function addToPlaylist(uint256 _playlistId, uint256 _musicId) external {
+        require(playlists[_playlistId].creator == msg.sender, "Not playlist owner");
+        playlists[_playlistId].musicIds.push(_musicId);
+    }
+
+    function likeMusic(uint256 _musicId) external {
+        require(!likes[_musicId][msg.sender], "Already liked");
+        likes[_musicId][msg.sender] = true;
+        likesCount[_musicId]++;
+    }
+
+    function addComment(uint256 _musicId, string memory _content) external {
+        comments[_musicId].push(Comment(msg.sender, _content, block.timestamp));
+    }
+
+    // ソーシャル機能の追加
+    function updateProfile(string memory name, string memory avatarURI) external {
+        UserProfile storage profile = userProfiles[msg.sender];
+        profile.name = name;
+        profile.avatarURI = avatarURI;
+        emit ProfileUpdated(msg.sender, name, avatarURI);
+    }
+    
+    function followPlaylist(uint256 playlistId) external {
+        require(playlists[playlistId].isPublic, "Playlist is private");
+        require(!playlistFollowers[playlistId][msg.sender], "Already following");
+        
+        playlistFollowers[playlistId][msg.sender] = true;
+        UserProfile storage profile = userProfiles[msg.sender];
+        profile.playlists.push(playlistId);
+        
+        emit PlaylistFollowed(playlistId, msg.sender);
+    }
 }

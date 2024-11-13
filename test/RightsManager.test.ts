@@ -1,6 +1,31 @@
 // test/RightsManager.test.ts  
+import { expect } from "chai";  
+import { ethers, network } from "hardhat";  
+import { Contract } from "ethers";  
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";  
+
+
 describe("Advanced License Features", function () {  
+    let musicNFT: Contract;  
+    let rightsManager: Contract;  
+    let owner: SignerWithAddress;  
+    let artist: SignerWithAddress;  
+    let user1: SignerWithAddress;  
+
     beforeEach(async function () {  
+        [owner, artist, user1] = await ethers.getSigners();  
+
+        // Deploy MusicNFT  
+        const MusicNFT = await ethers.getContractFactory("MusicNFT");  
+        musicNFT = await MusicNFT.deploy();  
+        await musicNFT.waitForDeployment();  
+
+        // Deploy RightsManager  
+        const RightsManager = await ethers.getContractFactory("RightsManager");  
+        rightsManager = await RightsManager.deploy(await musicNFT.getAddress());  
+        await rightsManager.waitForDeployment();  
+
+        // Mint NFT and set license terms  
         await musicNFT.connect(artist).mintMusic("ipfs://1");  
         await rightsManager.connect(artist).setLicenseTerms(  
             1,  
@@ -12,6 +37,7 @@ describe("Advanced License Features", function () {
             1000 // 10%のロイヤリティ  
         );  
     });  
+
 
     it("Should handle license expiration", async function () {  
         await rightsManager.connect(user1).purchaseLicense(1, 0, {  

@@ -20,15 +20,15 @@ describe("音楽NFT 詳細テスト", function () {
 
     describe("NFTの発行と検証", function () {  
         it("空のURIで発行しようとすると失敗すること", async function () {  
-            await expect(musicNFT.connect(artist).mintMusic(""))  
+            await expect(musicNFT.mintMusic(""))  
                 .to.be.revertedWith("URI cannot be empty");  
         });  
 
         it("MusicMintedイベントが正しく発行されること", async function () {  
-            const tokenURI = "ipfs://test";  
-            await expect(musicNFT.connect(artist).mintMusic(tokenURI))  
+            const uri = "ipfs://test-uri";  
+            await expect(musicNFT.mintMusic(uri))  
                 .to.emit(musicNFT, "MusicMinted")  
-                .withArgs(artist.address, 1, tokenURI);  
+                .withArgs(1, await owner.getAddress(), uri);  
         });  
 
         it("同じURIで複数のNFTを発行できること", async function () {  
@@ -83,7 +83,7 @@ describe("音楽NFT 詳細テスト", function () {
 
     describe("メタデータの取り扱い", function () {  
         it("存在しないトークンIDのURIを取得しようとすると失敗すること", async function () {  
-            await expect(musicNFT.tokenURI(1))  
+            await expect(musicNFT.tokenURI(999))  
                 .to.be.revertedWith("Token does not exist");  
         });  
 

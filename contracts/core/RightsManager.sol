@@ -28,10 +28,17 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         LicenseType licenseType;  
     }  
 
+    struct RevenuePool {
+        uint256 streamingRevenue;
+        uint256 downloadRevenue;
+        uint256 commercialRevenue;
+    }
+
     mapping(uint256 => LicenseTerms) public licenseTerms;  
     mapping(address => mapping(uint256 => License)) public licenses;  
     mapping(uint256 => address) public tokenArtists;  
     mapping(uint256 => uint256) public tokenRevenue;  
+    mapping(uint256 => RevenuePool) public revenuePools;
 
     event LicenseTermsSet(  
         uint256 indexed tokenId,  
@@ -177,6 +184,24 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
     {  
         return tokenRevenue[tokenId];  
     }  
+
+    function distributeRevenue(uint256 tokenId) external nonReentrant {
+        RevenuePool storage pool = revenuePools[tokenId];
+        address artist = tokenArtists[tokenId];
+        require(artist != address(0), "Artist not found");
+        
+        uint256 totalRevenue = pool.streamingRevenue + pool.downloadRevenue + pool.commercialRevenue;
+        require(totalRevenue > 0, "No revenue to distribute");
+        
+        pool.streamingRevenue = 0;
+        pool.downloadRevenue = 0;
+        pool.commercialRevenue = 0;
+        
+        (bool success, ) = payable(artist).call{value: totalRevenue}("");
+        require(success, "Revenue distribution failed");
+        
+        emit RoyaltyPaid(tokenId, artist, totalRevenue);
+    }
 
     function pause() external onlyOwner {  
         _pause();  
