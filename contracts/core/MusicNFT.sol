@@ -18,19 +18,21 @@ contract MusicNFT is ERC721, ERC2981 {
         _setDefaultRoyalty(msg.sender, 1000); // 10% royalty  
     }  
 
-    function mintMusic(string memory tokenURI) public returns (uint256) {  
-        require(bytes(tokenURI).length > 0, "URI cannot be empty");  
+    function mintMusic(string memory uri) public returns (uint256) {  
+        require(bytes(uri).length > 0, "URI cannot be empty");  
         
         _tokenIds.increment();  
         uint256 newTokenId = _tokenIds.current();  
 
         _safeMint(msg.sender, newTokenId);  
-        _tokenURIs[newTokenId] = tokenURI;  
+        _tokenURIs[newTokenId] = uri;  
         _setTokenRoyalty(newTokenId, msg.sender, 1000);  
 
-        emit MusicMinted(msg.sender, newTokenId, tokenURI);  
+        emit MusicMinted(msg.sender, newTokenId, uri);  
         return newTokenId;  
     }  
+
+
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {  
         require(_exists(tokenId), "Token does not exist");  
