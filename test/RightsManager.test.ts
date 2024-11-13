@@ -1,88 +1,83 @@
 // test/RightsManager.test.ts  
-import { expect } from "chai";  
-import { ethers } from "hardhat";  
-import { deployContract, setupUsers } from "./utils/helpers";  
-import { RightsManager, MusicNFT } from "../typechain-types";  
-import { Contract } from "ethers";  
-
-describe("RightsManager", function () {  
-    let rightsManager: Contract;  
-    let musicNFT: Contract;  
-    let owner: any, artist: any, user1: any;  
-
+describe("Advanced License Features", function () {  
     beforeEach(async function () {  
-        try {  
-            // Setup users  
-            const users = await setupUsers();  
-            owner = users.owner;  
-            artist = users.artist;  
-            user1 = users.user1;  
-
-            // Deploy MusicNFT first  
-            musicNFT = await deployContract("MusicNFT", []);  
-            const musicNFTAddress = await musicNFT.getAddress();  
-            console.log("MusicNFT deployed at:", musicNFTAddress);  
-
-            // Then deploy RightsManager with MusicNFT address  
-            rightsManager = await deployContract("RightsManager", [musicNFTAddress]);  
-            console.log("RightsManager deployed at:", await rightsManager.getAddress());  
-        } catch (error) {  
-            console.error("Setup error:", error);  
-            throw error;  
-        }  
-    });  
-
-    describe("License Management", function () {  
-        it("Should allow setting license terms", async function () {  
-            const mintTx = await musicNFT.connect(artist).mintMusic("ipfs://1");  
-            await mintTx.wait();  
-
-            const setTermsTx = await rightsManager.connect(artist).setLicenseTerms(  
-                1,  
-                ethers.parseEther("0.1"),  
-                true  
-            );  
-            await setTermsTx.wait();  
-
-            const terms = await rightsManager.getLicenseTerms(1);  
-            expect(terms.price).to.equal(ethers.parseEther("0.1"));  
-            expect(terms.isActive).to.be.true;  
-        });  
-
-        it("Should allow purchasing license", async function () {  
-            const mintTx = await musicNFT.connect(artist).mintMusic("ipfs://1");  
-            await mintTx.wait();  
-
-            const setTermsTx = await rightsManager.connect(artist).setLicenseTerms(  
-                1,  
-                ethers.parseEther("0.1"),  
-                true  
-            );  
-            await setTermsTx.wait();  
-
-            await expect(rightsManager.connect(user1).purchaseLicense(1, {  
-                value: ethers.parseEther("0.1")  
-            }))  
-                .to.emit(rightsManager, "LicensePurchased")  
-                .withArgs(user1.address, 1);  
-        });  
-    });  
-    describe("Advanced License Features", function () {  
-    it("Should allow license revocation by owner", async function () {  
-        // ライセンス取り消し機能のテスト  
+        await musicNFT.connect(artist).mintMusic("ipfs://1");  
+        await rightsManager.connect(artist).setLicenseTerms(  
+            1,  
+            ethers.parseEther("0.1"),  
+            true,  
+            86400, // 1日  
+            0, // PERSONAL  
+            100, // 最大100回のストリーミング  
+            1000 // 10%のロイヤリティ  
+        );  
     });  
 
     it("Should handle license expiration", async function () {  
-        // ライセンス期限切れの機能テスト  
+        await rightsManager.connect(user1).purchaseLicense(1, 0, {  
+            value: ethers.parseEther("0.1")  
+        });  
+
+        // 時間を1日後に進める  
+        await network.provider.send("evm_increaseTime", [86401]);  
+        await network.provider.send("evm_mine");  
+
+        const hasValidLicense = await rightsManager.hasValidLicense(user1.address, 1);  
+        expect(hasValidLicense).to.be.false;  
     });  
 
-    it("Should allow different license types", async function () {  
-        // 複数のライセンスタイプ（商用/非商用など）のテスト  
+    it("Should track stream count correctly", async function () {  
+        await rightsManager.connect(user1).purchaseLicense(1, 0, {  
+            value: ethers.parseEther("0.1")  
+        });  
+
+        await rightsManager.connect(owner).recordStream(1, user1.address);  
+        
+        const license = await rightsManager.getLicenseDetails(user1.address, 1);  
+        expect(license.streamCount).to.equal(1);  
     });  
 
-    it("Should track license usage", async function () {  
-        // ライセンス使用状況の追跡テスト  
-    });  
-});  
+    it("Should handle different license types", async function () {  
+        // 商用ライセンスの設定  
+        await rightsManager.connect(artist).setLicenseTerms(  
+            1,  
+            ethers.parseEther("0.5"),  
+            true,  
+            86400 * 30, // 30日  
+            1, // COMMERCIAL  
+            1000, // 1000回のストリーミング  
+            2000 // 20%のロイヤリティ  
+        );  
 
+        await rightsManager.connect(user1).purchaseLicense(1, 1, {  
+            value: ethers.parseEther("0.5")  
+        });  
+
+        const license = await rightsManager.getLicenseDetails(user1.address, 1);  
+        expect(license.licenseType).to.equal(1); // COMMERCIAL  
+    });  
+
+    it("Should calculate and distribute royalties correctly", async function () {  
+        const initialArtistBalance = await ethers.provider.getBalance(artist.address);  
+
+        await rightsManager.connect(user1).purchaseLicense(1, 0, {  
+            value: ethers.parseEther("0.1")  
+        });  
+
+        const finalArtistBalance = await ethers.provider.getBalance(artist.address);  
+        const expectedRoyalty = ethers.parseEther("0.01"); // 10%  
+        
+        expect(finalArtistBalance - initialArtistBalance).to.equal(expectedRoyalty);  
+    });  
+
+    it("Should allow license revocation by owner", async function () {  
+        await rightsManager.connect(user1).purchaseLicense(1, 0, {  
+            value: ethers.parseEther("0.1")  
+        });  
+
+        await rightsManager.connect(artist).revokeLicense(1, user1.address);  
+        
+        const hasValidLicense = await rightsManager.hasValidLicense(user1.address, 1);  
+        expect(hasValidLicense).to.be.false;  
+    });  
 });
