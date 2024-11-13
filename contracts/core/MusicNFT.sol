@@ -19,6 +19,8 @@ contract MusicNFT is ERC721, ERC2981 {
     }  
 
     function mintMusic(string memory tokenURI) public returns (uint256) {  
+        require(bytes(tokenURI).length > 0, "URI cannot be empty");  
+        
         _tokenIds.increment();  
         uint256 newTokenId = _tokenIds.current();  
 
