@@ -1,0 +1,28 @@
+{  
+  "name": "music-streaming-dapp",  
+  "version": "1.0.0",  
+  "description": "",  
+  "main": "index.js",  
+  "scripts": {  
+    "test": "hardhat test",  
+    "compile": "hardhat compile",  
+    "clean": "hardhat clean"  
+  },  
+  "author": "",  
+  "license": "ISC",  
+  "devDependencies": {  
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",  
+    "@openzeppelin/contracts": "^4.9.3",  
+    "@typechain/ethers-v6": "^0.5.0",  
+    "@typechain/hardhat": "^9.0.0",  
+    "@types/chai": "^4.3.20",  
+    "@types/mocha": "^10.0.9",  
+    "@types/node": "^20.8.0",  
+    "chai": "^4.3.10",  
+    "ethers": "^6.8.0",  
+    "hardhat": "^2.22.15",  
+    "ts-node": "^10.9.2",  
+    "typechain": "^8.3.0",  
+    "typescript": "^5.2.2"  
+  }
+}
