@@ -67,4 +67,22 @@ describe("RightsManager", function () {
                 .withArgs(user1.address, 1);  
         });  
     });  
+    describe("Advanced License Features", function () {  
+    it("Should allow license revocation by owner", async function () {  
+        // ライセンス取り消し機能のテスト  
+    });  
+
+    it("Should handle license expiration", async function () {  
+        // ライセンス期限切れの機能テスト  
+    });  
+
+    it("Should allow different license types", async function () {  
+        // 複数のライセンスタイプ（商用/非商用など）のテスト  
+    });  
+
+    it("Should track license usage", async function () {  
+        // ライセンス使用状況の追跡テスト  
+    });  
+});  
+
 });
