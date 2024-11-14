@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import { Contract } from "ethers";  
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";  
 
-describe("MusicStreaming", function () {  
+describe("音楽ストリーミング機能テスト", function () {  
     let musicNFT: Contract;  
     let rightsManager: Contract;  
     let musicStreaming: Contract;  
@@ -56,8 +56,8 @@ describe("MusicStreaming", function () {
         await setTermsTx.wait(); // トランザクションの完了を待機  
     });  
 
-    describe("基本的なストリーミング機能", function () {  
-        it("ライセンスを持っていない場合はストリーミングを開始できない", async function () {  
+    describe("ストリーミングの基本機能", function () {  
+        it("ライセンスがない場合はストリーミング不可", async function () {  
             await expect(  
                 musicStreaming.connect(user).startStream(1n, {  
                     value: ethers.parseEther("0.001")  
@@ -65,7 +65,7 @@ describe("MusicStreaming", function () {
             ).to.be.revertedWith("No valid license");  
         });  
 
-        it("ライセンスを購入してストリーミングを開始できる", async function () {  
+        it("ライセンス購入後にストリーミング可能", async function () {  
             // ライセンスを購入  
             const purchaseTx = await rightsManager.connect(user).purchaseLicense(  
                 1n,  // tokenId  
@@ -84,19 +84,19 @@ describe("MusicStreaming", function () {
         });  
     });  
 
-    describe("Social Features", function () {
-        it("Should create and manage playlists", async function () {
-            const [user] = await ethers.getSigners();
-            await musicStreaming.connect(user).createPlaylist("My Playlist", true);
-            const playlist = await musicStreaming.playlists(1);
-            expect(playlist.name).to.equal("My Playlist");
-            expect(playlist.creator).to.equal(user.address);
-        });
+    describe("ソーシャル機能", function () {  
+        it("プレイリストの作成と管理", async function () {  
+            const [user] = await ethers.getSigners();  
+            await musicStreaming.connect(user).createPlaylist("マイプレイリスト", true);  
+            const playlist = await musicStreaming.playlists(1);  
+            expect(playlist.name).to.equal("マイプレイリスト");  
+            expect(playlist.creator).to.equal(user.address);  
+        });  
 
-        it("Should handle likes correctly", async function () {
-            const [user] = await ethers.getSigners();
-            await musicStreaming.connect(user).likeMusic(1);
-            expect(await musicStreaming.likesCount(1)).to.equal(1);
-        });
-    });
+        it("いいね機能が正常に動作する", async function () {  
+            const [user] = await ethers.getSigners();  
+            await musicStreaming.connect(user).likeMusic(1);  
+            expect(await musicStreaming.likesCount(1)).to.equal(1);  
+        });  
+    });  
 });

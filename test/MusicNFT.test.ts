@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";  
 import { MusicNFT } from "../typechain-types";  
 
-describe("音楽NFT 詳細テスト", function () {  
+describe("音楽NFT テスト", function () {  
     let musicNFT: MusicNFT;  
     let owner: SignerWithAddress;  
     let artist: SignerWithAddress;  
@@ -18,20 +18,20 @@ describe("音楽NFT 詳細テスト", function () {
         await musicNFT.waitForDeployment();  
     });  
 
-    describe("NFTの発行と検証", function () {  
-        it("空のURIで発行しようとすると失敗すること", async function () {  
+    describe("NFTの基本機能", function () {  
+        it("空のURIではNFTを作成できない", async function () {  
             await expect(musicNFT.mintMusic(""))  
                 .to.be.revertedWith("URI cannot be empty");  
         });  
 
-        it("MusicMintedイベントが正しく発行されること", async function () {  
+        it("NFT作成時にイベントが正しく発行される", async function () {  
             const uri = "ipfs://test-uri";  
             await expect(musicNFT.mintMusic(uri))  
                 .to.emit(musicNFT, "MusicMinted")  
                 .withArgs(1, await owner.getAddress(), uri);  
         });  
 
-        it("同じURIで複数のNFTを発行できること", async function () {  
+        it("同一URIで複数のNFTを作成可能", async function () {  
             const tokenURI = "ipfs://test";  
             await musicNFT.connect(artist).mintMusic(tokenURI);  
             await musicNFT.connect(artist).mintMusic(tokenURI);  
@@ -40,8 +40,8 @@ describe("音楽NFT 詳細テスト", function () {
         });  
     });  
 
-    describe("所有権とトランスファー", function () {  
-        it("NFTを他のアドレスに転送できること", async function () {  
+    describe("所有権の管理", function () {  
+        it("NFTを他のアドレスに転送できる", async function () {  
             await musicNFT.connect(artist).mintMusic("ipfs://test");  
             await musicNFT.connect(artist).transferFrom(  
                 artist.address,  
@@ -51,7 +51,7 @@ describe("音楽NFT 詳細テスト", function () {
             expect(await musicNFT.ownerOf(1)).to.equal(user1.address);  
         });  
 
-        it("所有者でない場合は転送できないこと", async function () {  
+        it("所有者以外は転送できない", async function () {  
             await musicNFT.connect(artist).mintMusic("ipfs://test");  
             await expect(  
                 musicNFT.connect(user1).transferFrom(  
@@ -63,8 +63,8 @@ describe("音楽NFT 詳細テスト", function () {
         });  
     });  
 
-    describe("ロイヤリティの詳細テスト", function () {  
-        it("異なる販売価格でも正しいロイヤリティが計算されること", async function () {  
+    describe("ロイヤリティ機能", function () {  
+        it("異なる価格でも正しくロイヤリティを計算する", async function () {  
             await musicNFT.connect(artist).mintMusic("ipfs://test");  
             
             const [receiver1, amount1] = await musicNFT.royaltyInfo(1, ethers.parseEther("1.0"));  
@@ -74,7 +74,7 @@ describe("音楽NFT 詳細テスト", function () {
             expect(amount2).to.equal(ethers.parseEther("0.2"));  
         });  
 
-        it("ロイヤリティの受取人が正しく設定されること", async function () {  
+        it("ロイヤリティ受取人が正しく設定される", async function () {  
             await musicNFT.connect(artist).mintMusic("ipfs://test");  
             const [receiver] = await musicNFT.royaltyInfo(1, 1000);  
             expect(receiver).to.equal(artist.address);  

@@ -5,9 +5,10 @@ import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";  
 
 
-describe("Advanced License Features", function () {  
+describe("ライセンス管理機能テスト", function () {  
     let musicNFT: Contract;  
     let rightsManager: Contract;  
+    let musicStreaming: Contract; // MusicStreamingコントラクトを追加
     let owner: SignerWithAddress;  
     let artist: SignerWithAddress;  
     let user1: SignerWithAddress;  
@@ -25,6 +26,16 @@ describe("Advanced License Features", function () {
         rightsManager = await RightsManager.deploy(await musicNFT.getAddress());  
         await rightsManager.waitForDeployment();  
 
+        // Deploy MusicStreaming
+        const MusicStreaming = await ethers.getContractFactory("MusicStreaming");
+        musicStreaming = await MusicStreaming.deploy(await rightsManager.getAddress());
+        await musicStreaming.waitForDeployment();
+
+        // Set MusicStreaming contract address in RightsManager
+        await rightsManager.connect(owner).setMusicStreamingContract(
+            await musicStreaming.getAddress()
+        );
+
         // Mint NFT and set license terms  
         await musicNFT.connect(artist).mintMusic("ipfs://1");  
         await rightsManager.connect(artist).setLicenseTerms(  
@@ -39,12 +50,12 @@ describe("Advanced License Features", function () {
     });  
 
 
-    it("Should handle license expiration", async function () {  
+    it("ライセンスの有効期限が正しく��能する", async function () {  
         await rightsManager.connect(user1).purchaseLicense(1, 0, {  
             value: ethers.parseEther("0.1")  
         });  
 
-        // 時間を1日後に進める  
+        // 1日後に時間を進める  
         await network.provider.send("evm_increaseTime", [86401]);  
         await network.provider.send("evm_mine");  
 
@@ -52,26 +63,31 @@ describe("Advanced License Features", function () {
         expect(hasValidLicense).to.be.false;  
     });  
 
-    it("Should track stream count correctly", async function () {  
+    it("ストリーム回数が正しく記録される", async function () {  
+        // ライセンスを購入
         await rightsManager.connect(user1).purchaseLicense(1, 0, {  
             value: ethers.parseEther("0.1")  
         });  
 
-        await rightsManager.connect(owner).recordStream(1, user1.address);  
+        // ストリーミングを実行
+        await musicStreaming.connect(user1).startStream(1, {
+            value: ethers.parseEther("0.001")
+        });
+        await musicStreaming.connect(user1).endStream(1);
         
         const license = await rightsManager.getLicenseDetails(user1.address, 1);  
         expect(license.streamCount).to.equal(1);  
     });  
 
-    it("Should handle different license types", async function () {  
+    it("異なるライセンスタイプを正しく処理する", async function () {  
         // 商用ライセンスの設定  
         await rightsManager.connect(artist).setLicenseTerms(  
             1,  
             ethers.parseEther("0.5"),  
             true,  
             86400 * 30, // 30日  
-            1, // COMMERCIAL  
-            1000, // 1000回のストリーミング  
+            1, // 商用ライセンス  
+            1000, // 1000回まで再生可能  
             2000 // 20%のロイヤリティ  
         );  
 
@@ -80,10 +96,10 @@ describe("Advanced License Features", function () {
         });  
 
         const license = await rightsManager.getLicenseDetails(user1.address, 1);  
-        expect(license.licenseType).to.equal(1); // COMMERCIAL  
+        expect(license.licenseType).to.equal(1); // 商用ライセンス  
     });  
 
-    it("Should calculate and distribute royalties correctly", async function () {  
+    it("ロイヤリティが正しく計算され分配される", async function () {  
         const initialArtistBalance = await ethers.provider.getBalance(artist.address);  
 
         await rightsManager.connect(user1).purchaseLicense(1, 0, {  
@@ -96,7 +112,7 @@ describe("Advanced License Features", function () {
         expect(finalArtistBalance - initialArtistBalance).to.equal(expectedRoyalty);  
     });  
 
-    it("Should allow license revocation by owner", async function () {  
+    it("所有者によるライセンスの取り消しが可能", async function () {  
         await rightsManager.connect(user1).purchaseLicense(1, 0, {  
             value: ethers.parseEther("0.1")  
         });  

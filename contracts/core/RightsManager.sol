@@ -40,6 +40,9 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
     mapping(uint256 => uint256) public tokenRevenue;  
     mapping(uint256 => RevenuePool) public revenuePools;
 
+    // MusicStreamingコントラクトのアドレスを保持
+    address public musicStreamingContract;
+
     event LicenseTermsSet(  
         uint256 indexed tokenId,  
         uint256 price,  
@@ -145,7 +148,8 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         external  
         whenNotPaused  
     {  
-        require(msg.sender == owner(), "Only owner can record streams");  
+        // ownerではなく、MusicStreamingコントラクトからの呼び出しのみを許可
+        require(msg.sender == musicStreamingContract, "Only MusicStreaming contract can record streams");
         License storage license = licenses[user][tokenId];  
         require(license.isValid, "Invalid license");  
         require(block.timestamp <= license.expiresAt, "License expired");  
@@ -157,6 +161,12 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         license.streamCount++;  
         emit StreamRecorded(tokenId, user, license.streamCount);  
     }  
+
+    // MusicStreamingコントラクトの設定関数を追加
+    function setMusicStreamingContract(address _musicStreaming) external onlyOwner {
+        require(_musicStreaming != address(0), "Invalid address");
+        musicStreamingContract = _musicStreaming;
+    }
 
     function hasValidLicense(address user, uint256 tokenId)  
         external  
