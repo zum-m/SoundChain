@@ -77,4 +77,17 @@ contract UserProfileNFT is ERC721, ERC721URIStorage {
     function getProfileIdByAddress(address user) public view returns (uint256) {
         return _addressToTokenId[user];
     }
+
+    // オーバーライド関数の追加
+    function _burn(uint256 tokenId) internal virtual override(ERC721, ERC721URIStorage) {
+        super._burn(tokenId);
+    }
+
+    function tokenURI(uint256 tokenId) public view virtual override(ERC721, ERC721URIStorage) returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721URIStorage) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
 }
