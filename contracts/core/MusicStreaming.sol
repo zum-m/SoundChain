@@ -53,6 +53,7 @@ contract MusicStreaming is ReentrancyGuard {
         bool isPublic;
         uint256 likeCount; // プレイリストへのいいね数を追加
         uint256 reputation; // キュレーターとしての評価
+        address[] followers;  // フォロワーリストを追加
     }
 
     mapping(uint256 => Playlist) public playlists;
@@ -177,7 +178,8 @@ contract MusicStreaming is ReentrancyGuard {
             msg.sender,
             _isPublic,
             0,
-            0
+             0,
+            new address[](0)  // フォロワーリストを初期化
         );
     }
 
@@ -218,6 +220,8 @@ contract MusicStreaming is ReentrancyGuard {
         );
 
         playlistFollowers[playlistId][msg.sender] = true;
+        playlists[playlistId].followers.push(msg.sender);  // フォロワーリストに追加
+
         UserProfile storage profile = userProfiles[msg.sender];
         profile.playlists.push(playlistId);
 
@@ -240,8 +244,15 @@ contract MusicStreaming is ReentrancyGuard {
             creator: msg.sender,
             isPublic: _isPublic,
             likeCount: 0,
-            reputation: 0
+            reputation: 0,
+            followers: new address[](0)  // フォロワーリストを初期化
         });
+
+        // キュレーターが未登録の場合に追加
+        if (!curatorStats[msg.sender].isActive) {
+            curatorStats[msg.sender].isActive = true;
+            curators.push(msg.sender);
+        }
 
         // キュレーション評価の更新
         updateCuratorReputation(msg.sender);
@@ -279,9 +290,9 @@ contract MusicStreaming is ReentrancyGuard {
         uint256 likeCount = 0;
         uint256 curatorPlaylistCount = getUserPlaylistCount(curator);
 
-        for (uint256 i = 1; i <= curatorPlaylistCount; i++) {
+        for (uint256 i = 1; i <= playlistCount; i++) {
             if (playlists[i].creator == curator) {
-                followerCount += getPlaylistFollowerCount(i);
+                followerCount += playlists[i].followers.length;  // フォロワー数を合計
                 likeCount += playlists[i].likeCount;
             }
         }
@@ -369,13 +380,7 @@ contract MusicStreaming is ReentrancyGuard {
     }
 
     function getPlaylistFollowerCount(uint256 playlistId) public view returns (uint256) {
-        uint256 count = 0;
-        for (uint256 i = 0; i < curators.length; i++) {
-            if (playlistFollowers[playlistId][curators[i]]) {
-                count++;
-            }
-        }
-        return count;
+        return playlists[playlistId].followers.length;
     }
 
     function getUserListeningHistory(address user) public view returns (uint256[] memory) {
@@ -451,5 +456,10 @@ contract MusicStreaming is ReentrancyGuard {
         // 実際の推薦ロジックをここに実装
         // この例では簡単な実装を提供
         return recommendations;
+    }
+
+    // curators 配列を取得する関数を追加
+    function getCurators() public view returns (address[] memory) {
+        return curators;
     }
 }

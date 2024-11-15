@@ -49,7 +49,7 @@ async function main() {
         }
     );
     console.log(`📍 MusicNFTアドレス: ${await musicNFT.getAddress()}`);
-    await sleep(5000);
+    await sleep(3000);
 
     const rightsManager = await displayTask(
         "RightsManagerコントラクトのデプロイ",
@@ -62,7 +62,7 @@ async function main() {
         }
     );
     console.log(`📍 RightsManagerアドレス: ${await rightsManager.getAddress()}`);
-    await sleep(5000);
+    await sleep(3000);
 
     const musicStreaming = await displayTask(
         "MusicStreamingコントラクトのデプロイ",
@@ -75,7 +75,7 @@ async function main() {
         }
     );
     console.log(`📍 MusicStreamingアドレス: ${await musicStreaming.getAddress()}`);
-    await sleep(5000);
+    await sleep(3000);
 
     // MusicStreamingコントラクトのアドレスを設定
     await displayTask(
@@ -89,7 +89,7 @@ async function main() {
             console.log("MusicStreamingコントラクトのアドレスを設定しました");
         }
     );
-    await sleep(5000);
+    await sleep(3000);
 
     // NFT作成フェーズ
     console.log("\n🎨 フェーズ2: 音楽コンテンツの登録（アーティスト操作）");
@@ -103,7 +103,7 @@ async function main() {
             console.log(`トークンID: 1, URI: ${tokenURI}`);
         }
     );
-    await sleep(5000);
+    await sleep(3000);
 
     // 収益追跡用の変数
     let totalRoyalties = BigInt(0);
@@ -133,7 +133,7 @@ async function main() {
             });
         }
     );
-    await sleep(5000);
+    await sleep(3000);
 
     // ライセンス購入時の支払い追跡
     await displayTask(
@@ -172,7 +172,7 @@ async function main() {
             console.log(`支払われたロイヤリティ: ${ethers.formatEther(totalRoyalties)} ETH`);
         }
     );
-    await sleep(5000);
+    await sleep(3000);
 
     // ストリーミングフェーズ
     console.log("\n🎧 フェーズ4: 音楽ストリーミング（ユーザー1の操作）");
@@ -191,7 +191,7 @@ async function main() {
             console.log(`ストリーミング支払額: ${ethers.formatEther(streamPayment)} ETH`);
         }
     );
-    await sleep(5000);
+    await sleep(3000);
 
     await displayTask(
         "ストリーミング終了",
@@ -203,7 +203,7 @@ async function main() {
             console.log(`再生時間: ${history[0].duration.toString()}秒`);
         }
     );
-    await sleep(5000);
+    await sleep(3000);
 
     // ソーシャル機能フェーズ
     console.log("\n🤝 フェーズ5: ソーシャル機能");
@@ -216,7 +216,7 @@ async function main() {
             console.log("プレイリストを作成しました");
         }
     );
-    await sleep(5000);
+    await sleep(3000);
 
     await displayTask(
         "いいね機能",
@@ -229,8 +229,104 @@ async function main() {
         }
     );
 
-    // 最終状態レポート
-    console.log("\n📊 最終状態レポート");
+    // キュレーション機能フェーズを追加
+    console.log("\n🎨 フェーズ6: キュレーション機能");
+    
+    // キュレーターによるプレイリスト作成
+    await displayTask(
+        "キュレーションプレイリストの作成",
+        "キュレーター（ユーザー1）",
+        async () => {
+            const tx = await musicStreaming.connect(user1).createCuratedPlaylist(
+                "おすすめJazz 2024",
+                "ジャズの名曲セレクション",
+                [1], // 既存の音楽NFTを含める
+                true // 公開プレイリスト
+            );
+            await tx.wait();
+            const playlist = await musicStreaming.playlists(1);
+            console.log(`作成されたプレイリスト: ${playlist.name}`);
+            console.log(`キュレーター: ${playlist.creator}`);
+        }
+    );
+    await sleep(3000);
+
+    // プレイリストへのいいね
+    await displayTask(
+        "プレイリストへのいいね",
+        "一般ユーザー2",
+        async () => {
+            const tx = await musicStreaming.connect(user2).likePlaylist(1);
+            await tx.wait();
+            const playlist = await musicStreaming.playlists(1);
+            console.log(`プレイリストのいいね数: ${playlist.likeCount}`);
+        }
+    );
+    await sleep(3000);
+
+    // プレイリストのフォロー
+    await displayTask(
+        "プレイリストのフォロー",
+        "一般ユーザー2",
+        async () => {
+            const tx = await musicStreaming.connect(user2).followPlaylist(1);
+            await tx.wait();
+            const followerCount = await musicStreaming.getPlaylistFollowerCount(1);
+            console.log(`プレイリストのフォロワー数: ${followerCount}`);
+        }
+    );
+    await sleep(3000);
+
+    // キュレーター評価の確認
+    await displayTask(
+        "キュレーター評価の確認",
+        "システム",
+        async () => {
+            const curatorStats = await musicStreaming.curatorStats(user1.address);
+            console.log("キュレーター統計:", {
+                総いいね数: curatorStats.totalLikes.toString(),
+                フォロワー数: curatorStats.totalFollowers.toString(),
+                プレイリスト数: curatorStats.playlistCount.toString(),
+                評価スコア: curatorStats.reputation.toString()
+            });
+        }
+    );
+    await sleep(3000);
+
+    // 人気のキュレーター表示
+    await displayTask(
+        "人気キュレーターのランキング",
+        "システム",
+        async () => {
+            const curators = await musicStreaming.getCurators();
+            const curatorStatsList = [];
+
+            for (const curator of curators) {
+                const stats = await musicStreaming.curatorStats(curator);
+                curatorStatsList.push({
+                    address: curator,
+                    reputation: stats.reputation, // .toNumber()を削除
+                });
+            }
+
+            // 評価スコアの降順でソート
+            curatorStatsList.sort((a, b) => {
+                const reputationA = Number(a.reputation); // 数値に変換
+                const reputationB = Number(b.reputation); // 数値に変換
+                return reputationB - reputationA;
+            });
+
+            console.log("人気キュレーターのランキング:");
+            curatorStatsList.forEach((curator, index) => {
+                console.log(
+                    `順位 ${index + 1}: ${curator.address} - 評価スコア: ${curator.reputation}`
+                );
+            });
+        }
+    );
+    await sleep(3000);
+
+    // 最終状態レポートの前にfinalStatusを初期化
     const finalStatus = await displayTask(
         "統計情報の収集",
         "システム",
@@ -252,8 +348,52 @@ async function main() {
         }
     );
 
-    console.log("\n=".repeat(50));
-    console.log("📈 デモ実行結果:");
+    // 音楽の人気度確認
+    await displayTask(
+        "音楽の人気度確認",
+        "システム",
+        async () => {
+            const popularity = await musicStreaming.musicPopularityScore(1);
+            const appearances = await musicStreaming.getPlaylistAppearances(1);
+            const streamHistory = await musicStreaming.getStreamHistory(1);
+            const likes = await musicStreaming.likesCount(1);
+            
+            console.log("音楽統計:", {
+                人気度スコア: popularity.toString(),
+                プレイリスト登場回数: appearances.toString(),
+                ストリーミング回数: streamHistory.length.toString(),
+                いいね数: likes.toString()
+            });
+        }
+    );
+
+    // 最終状態レポート
+    console.log("\n📊 キュレーション機能の統計");
+    const curationStatus = await displayTask(
+        "キュレーション統計情報の収集",
+        "システム",
+        async () => {
+            const curatorStats = await musicStreaming.curatorStats(user1.address);
+            const playlistCount = await musicStreaming.getUserPlaylistCount(user1.address);
+            
+            return {
+                totalCurators: (await musicStreaming.getTopCurators()).length,
+                playlistsCreated: playlistCount,
+                curatorReputation: curatorStats.reputation,
+                totalFollowers: curatorStats.totalFollowers
+            };
+        }
+    );
+
+    // 最終レポートにキュレーション情報を追加
+    console.log("\n🎵 キュレーション情報:");
+    console.log(`総キュレーター数: ${curationStatus.totalCurators}名`);
+    console.log(`作成プレイリスト数: ${curationStatus.playlistsCreated}個`);
+    console.log(`キュレーター評価: ${curationStatus.curatorReputation}ポイント`);
+    console.log(`総フォロワー数: ${curationStatus.totalFollowers}名`);
+
+    // 最終状態レポート
+    console.log("\n📊 最終状態レポート");
     console.log("-".repeat(30));
     console.log("🎵 コンテンツ情報:");
     console.log(`NFT所有者: ${artist.address}`);
