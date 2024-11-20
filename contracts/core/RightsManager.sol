@@ -7,18 +7,31 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";  
 import "./MusicNFT.sol";  
 
-contract RightsManager is Ownable, ReentrancyGuard, Pausable {  
+contract RightsManager is Ownable, ReentrancyGuard, Pausable {
+    /*
+    * @title 音楽NFTの権利管理コントラクト
+    * @dev OpenZeppelinの以下の機能を継承:
+    * - Ownable: 管理者権限の制御
+    * - ReentrancyGuard: 再入攻撃対���
+    * - Pausable: 緊急時の機能停止
+    */
+
     MusicNFT public musicNFT;  
 
-    enum LicenseType { PERSONAL, COMMERCIAL, STREAMING }  
+    // ライセンスの種類を定義
+    enum LicenseType { 
+        PERSONAL,    // 個人利用ライセンス
+        COMMERCIAL,  // 商用利用ライセンス
+        STREAMING    // ストリーミング用ライセンス
+    }  
     
     struct LicenseTerms {  
-        uint256 price;  
-        bool isActive;  
-        uint256 duration;        // ライセンスの有効期間（秒）  
-        LicenseType licenseType; // ライセンスタイプ  
-        uint256 maxStreams;      // 最大ストリーミング回数  
-        uint256 royaltyRate;     // ロイヤリティレート（10000 = 100%）  
+        uint256 price;           // ライセンス価格
+        bool isActive;           // 販売状態
+        uint256 duration;        // 有効期間（秒）
+        LicenseType licenseType; // ライセンス種別
+        uint256 maxStreams;      // 最大再生回数
+        uint256 royaltyRate;     // ロイヤリティ率（10000 = 100%）
     }  
 
     struct License {  
@@ -28,16 +41,26 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         LicenseType licenseType;  
     }  
 
+    // 収益プール構造
     struct RevenuePool {
-        uint256 streamingRevenue;
-        uint256 downloadRevenue;
-        uint256 commercialRevenue;
+        uint256 streamingRevenue;   // ストリーミング収入
+        uint256 downloadRevenue;    // ダウンロード収入
+        uint256 commercialRevenue;  // 商用利用収入
     }
 
-    mapping(uint256 => LicenseTerms) public licenseTerms;  
-    mapping(address => mapping(uint256 => License)) public licenses;  
-    mapping(uint256 => address) public tokenArtists;  
-    mapping(uint256 => uint256) public tokenRevenue;  
+    // ライセンス条件の管理
+    mapping(uint256 => LicenseTerms) public licenseTerms;
+
+    // ユーザーごとのライセンス状態管理
+    mapping(address => mapping(uint256 => License)) public licenses;
+
+    // NFTごとの権利者アドレス管理
+    mapping(uint256 => address) public tokenArtists;
+
+    // NFTごとの収益管理
+    mapping(uint256 => uint256) public tokenRevenue;
+
+    // NFTごとの収益プール管理
     mapping(uint256 => RevenuePool) public revenuePools;
 
     // MusicStreamingコントラクトのアドレスを保持
@@ -73,6 +96,16 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         musicNFT = MusicNFT(_musicNFT);  
     }  
 
+    /**
+     * @dev ライセンス条件を設定
+     * @param tokenId NFTのトークンID
+     * @param price ライセンス価格
+     * @param isActive 販売状態
+     * @param duration 有効期間
+     * @param licenseType ライセンスタイプ
+     * @param maxStreams 最大再生回数
+     * @param royaltyRate ロイヤリティ率
+     */
     function setLicenseTerms(  
         uint256 tokenId,  
         uint256 price,  
@@ -101,6 +134,11 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         emit LicenseTermsSet(tokenId, price, isActive, duration, licenseType);  
     }  
 
+    /**
+     * @dev ライセンスを購入
+     * @param tokenId 購入するNFTのID
+     * @param licenseType ライセンスタイプ
+     */
     function purchaseLicense(uint256 tokenId, LicenseType licenseType)  
         external  
         payable  
@@ -144,6 +182,11 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         emit LicenseRevoked(tokenId, user);  
     }  
 
+    /**
+     * @dev ストリーミング記録
+     * @param tokenId 再生されたNFTのID
+     * @param user 再生したユーザーアドレス
+     */
     function recordStream(uint256 tokenId, address user)  
         external  
         whenNotPaused  
@@ -195,6 +238,10 @@ contract RightsManager is Ownable, ReentrancyGuard, Pausable {
         return tokenRevenue[tokenId];  
     }  
 
+    /**
+     * @dev 収益分配
+     * @param tokenId 収益を分配するNFTのID
+     */
     function distributeRevenue(uint256 tokenId) external nonReentrant {
         RevenuePool storage pool = revenuePools[tokenId];
         address artist = tokenArtists[tokenId];
